@@ -13,7 +13,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func TestValid(t *testing.T) {
+func TestValidOld(t *testing.T) {
 	tables := []struct {
 		pass  Password
 		pol   Policy
@@ -25,7 +25,27 @@ func TestValid(t *testing.T) {
 	}
 
 	for _, table := range tables {
-		result := Valid(table.pass, table.pol)
+		result := ValidOld(table.pass, table.pol)
+		if result != table.valid {
+			t.Errorf("Validation of (%v,%v) was incorrect, got: %v, want: %v.",
+				table.pol, table.pass, result, table.valid)
+		}
+	}
+}
+
+func TestValidNew(t *testing.T) {
+	tables := []struct {
+		pass  Password
+		pol   Policy
+		valid bool
+	}{
+		{Password("abcde"), Policy{1, 3, "a"}, true},
+		{Password("cdefg"), Policy{1, 3, "b"}, false},
+		{Password("ccccccccc"), Policy{2, 9, "c"}, false},
+	}
+
+	for _, table := range tables {
+		result := ValidNew(table.pass, table.pol)
 		if result != table.valid {
 			t.Errorf("Validation of (%v,%v) was incorrect, got: %v, want: %v.",
 				table.pol, table.pass, result, table.valid)

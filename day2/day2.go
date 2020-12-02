@@ -17,9 +17,14 @@ type Policy struct {
 
 type Password string
 
-func Valid(pass Password, policy Policy) bool {
+func ValidOld(pass Password, policy Policy) bool {
 	nb := strings.Count(string(pass), policy.letter)
 	return policy.lowest <= nb && nb <= policy.highest
+}
+
+func ValidNew(pass Password, policy Policy) bool {
+	return (string(pass)[policy.lowest-1] == policy.letter[0]) !=
+		(string(pass)[policy.highest-1] == policy.letter[0])
 }
 
 var listFormat = regexp.MustCompile(`^(\d+)-(\d+) ([a-z]): ([a-z]+)$`)
@@ -49,7 +54,7 @@ func main() {
 
 	for scanner.Scan() {
 		pol, pass := Parse(scanner.Text())
-		if Valid(pass, pol) {
+		if ValidNew(pass, pol) {
 			numberCorrect++
 		}
 	}
