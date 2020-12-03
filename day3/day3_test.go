@@ -44,9 +44,21 @@ func TestAtWithRepeatedMap(t *testing.T) {
 func TestTraverseAndCountTrees(t *testing.T) {
 	m := NewMap(world)
 
-	result := TraverseAndCountTrees(&m)
+	result := TraverseAndCountTrees(&m, &Slope{3, 1})
 
 	if result != 7 {
+		t.Errorf("TraverseAndCountTrees incorrect, got: %v, want %v.",
+			result, 7)
+	}
+
+}
+
+func TestMultiplyTreesForSlopes(t *testing.T) {
+	m := NewMap(world)
+
+	result := MultiplyTreesForSlopes(&m, ListedSlopes)
+
+	if result != 336 {
 		t.Errorf("TraverseAndCountTrees incorrect, got: %v, want %v.",
 			result, 7)
 	}

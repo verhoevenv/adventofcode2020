@@ -23,11 +23,24 @@ type Position struct {
 	y int
 }
 
+type Slope struct {
+	dx int
+	dy int
+}
+
+var ListedSlopes []Slope = []Slope{
+	Slope{1, 1},
+	Slope{3, 1},
+	Slope{5, 1},
+	Slope{7, 1},
+	Slope{1, 2},
+}
+
 func AtWithRepeatedMap(m *Map, pos *Position) byte {
 	return m.terrain[pos.y][pos.x%m.width]
 }
 
-func TraverseAndCountTrees(m *Map) int {
+func TraverseAndCountTrees(m *Map, s *Slope) int {
 	numTrees := 0
 	pos := Position{0, 0}
 
@@ -36,11 +49,22 @@ func TraverseAndCountTrees(m *Map) int {
 			numTrees++
 		}
 
-		pos.x += 3
-		pos.y += 1
+		pos.x += s.dx
+		pos.y += s.dy
 	}
 
 	return numTrees
+}
+
+func MultiplyTreesForSlopes(m *Map, slopes []Slope) int {
+	multTrees := 1
+
+	for _, slope := range slopes {
+		treesForSlope := TraverseAndCountTrees(m, &slope)
+		multTrees *= treesForSlope
+	}
+
+	return multTrees
 }
 
 func main() {
@@ -53,5 +77,5 @@ func main() {
 
 	m := NewMap(input)
 
-	fmt.Println(TraverseAndCountTrees(&m))
+	fmt.Println(MultiplyTreesForSlopes(&m, ListedSlopes))
 }
