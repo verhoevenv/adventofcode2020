@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ var requiredFields = []string{
 	"pid",
 }
 
-func valid(pass *passport) bool {
+func validOld(pass *passport) bool {
 	for _, f := range requiredFields {
 		if _, ok := pass.fields[f]; !ok {
 			return false
@@ -31,10 +32,82 @@ func valid(pass *passport) bool {
 	return true
 }
 
-func countValid(ps []passport) int {
+type validationRule = func(string) bool
+
+var validationRules = map[string]validationRule{
+	"byr": numInRange(1920, 2002),
+	"iyr": numInRange(2010, 2020),
+	"eyr": numInRange(2020, 2030),
+	"hgt": validHgt,
+	"hcl": matches(`^#[0-9a-f]{6}$`),
+	"ecl": matches(`^(amb|blu|brn|gry|grn|hzl|oth)$`),
+	"pid": matches(`^[0-9]{9}$`),
+}
+
+func numInRange(low int, high int) func(string) bool {
+	regex := regexp.MustCompile(`^\d{4}$`)
+	return func(val string) bool {
+		if !regex.MatchString(val) {
+			return false
+		}
+		valNum, err := strconv.Atoi(val)
+		if err != nil {
+			return false
+		}
+		if valNum < low {
+			return false
+		}
+		if valNum > high {
+			return false
+		}
+		return true
+	}
+}
+
+func matches(regexS string) func(string) bool {
+	regex := regexp.MustCompile(regexS)
+	return func(val string) bool {
+		if !regex.MatchString(val) {
+			return false
+		}
+		return true
+	}
+}
+
+func validHgt(hgt string) bool {
+	regex := regexp.MustCompile(`^(\d+)(in|cm)$`)
+	matches := regex.FindStringSubmatch(hgt)
+	if len(matches) != 3 {
+		return false
+	}
+	num, err := strconv.Atoi(matches[1])
+	if err != nil {
+		panic(err)
+	}
+	if matches[2] == "cm" {
+		return num >= 150 && num <= 193
+	}
+	return num >= 59 && num <= 76
+}
+
+func validStrict(pass *passport) bool {
+	for key, rule := range validationRules {
+		val, present := pass.fields[key]
+		if !present {
+			return false
+		}
+		if !rule(val) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func count(ps []passport, validation func(*passport) bool) int {
 	nbValid := 0
 	for _, p := range ps {
-		if valid(&p) {
+		if validation(&p) {
 			nbValid++
 		}
 	}
@@ -55,7 +128,9 @@ func parse(in string) []passport {
 		for _, field := range fieldStrings {
 			kv := strings.Split(field, ":")
 			if len(kv) != 2 {
-				panic(fmt.Sprintf("%v does not contain k/v pair!", field))
+				panic(fmt.Sprintf(
+					"%v does not contain k/v pair! During parsing of passport %v",
+					field, ppString))
 			}
 			fields[kv[0]] = kv[1]
 		}
@@ -71,5 +146,5 @@ func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 	ps := parse(string(input))
 
-	fmt.Println(countValid(ps))
+	fmt.Println(count(ps, validStrict))
 }
