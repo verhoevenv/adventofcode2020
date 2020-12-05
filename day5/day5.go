@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 )
 
 type boardingPass string
@@ -55,17 +56,32 @@ func deriveSeat(pass boardingPass) seat {
 	return newSeat(lowR, lowC)
 }
 
+// mutates argument!
+func findMissingSeat(seats []seat) int {
+	sort.Slice(seats, func(i, j int) bool {
+		return seats[i].seatID < seats[j].seatID
+	})
+
+	previousSeatID := seats[0].seatID
+	for _, seat := range seats[1:] {
+		if seat.seatID != previousSeatID+1 {
+			return previousSeatID + 1
+		}
+		previousSeatID = seat.seatID
+	}
+	panic("Didn't find missing seat")
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	highestSeatID := -1
+	allSeats := make([]seat, 0)
+
 	for scanner.Scan() {
 		pass := boardingPass(scanner.Text())
 		seat := deriveSeat(pass)
-		if seat.seatID > highestSeatID {
-			highestSeatID = seat.seatID
-		}
+		allSeats = append(allSeats, seat)
 	}
 
-	fmt.Println(highestSeatID)
+	fmt.Println(findMissingSeat(allSeats))
 }
