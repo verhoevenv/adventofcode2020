@@ -9,12 +9,35 @@ import (
 
 type group []string
 
-func (g *group) yesAnswers() int {
+func (g *group) anyYesAnswers() int {
 	perQuestion := make(map[rune]bool)
 
-	for _, person := range []string(*g) {
+	for _, person := range *g {
 		for _, qWithAnswerYes := range person {
 			perQuestion[qWithAnswerYes] = true
+		}
+	}
+
+	return len(perQuestion)
+}
+
+func (g *group) allYesAnswers() int {
+	perQuestion := make(map[rune]bool)
+
+	const allQuestions = "abcdefghijklmnopqrstuvwxyz"
+	for _, q := range allQuestions {
+		perQuestion[q] = true
+	}
+
+	for _, person := range *g {
+		seenForPerson := make(map[rune]bool)
+		for _, qWithAnswerYes := range person {
+			seenForPerson[qWithAnswerYes] = true
+		}
+		for _, q := range allQuestions {
+			if !seenForPerson[q] {
+				delete(perQuestion, q)
+			}
 		}
 	}
 
@@ -44,7 +67,7 @@ func main() {
 
 	sum := 0
 	for _, g := range gs {
-		sum += g.yesAnswers()
+		sum += g.allYesAnswers()
 	}
 
 	fmt.Println(sum)
