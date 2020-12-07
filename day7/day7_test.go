@@ -48,3 +48,35 @@ func TestHowManyCanHoldBag(t *testing.T) {
 	}
 
 }
+
+func TestHowManyInShinyGoldBag(t *testing.T) {
+	regulations := parse(rules)
+
+	result := regulations.howManyInShinyGoldBag()
+
+	if result != 32 {
+		t.Errorf("howManyInShinyGoldBag incorrect, got: %v, want %v.",
+			result, 32)
+	}
+
+}
+
+var rules2 = `shiny gold bags contain 2 dark red bags.
+dark red bags contain 2 dark orange bags.
+dark orange bags contain 2 dark yellow bags.
+dark yellow bags contain 2 dark green bags.
+dark green bags contain 2 dark blue bags.
+dark blue bags contain 2 dark violet bags.
+dark violet bags contain no other bags.`
+
+func TestHowManyInShinyGoldBag2(t *testing.T) {
+	regulations := parse(rules2)
+
+	result := regulations.howManyInShinyGoldBag()
+
+	if result != 126 {
+		t.Errorf("howManyInShinyGoldBag incorrect, got: %v, want %v.",
+			result, 126)
+	}
+
+}

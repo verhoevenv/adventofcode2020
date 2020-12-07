@@ -53,6 +53,32 @@ func (reg *regulations) howManyCanHoldShinyGoldBag() int {
 	return count
 }
 
+func (reg *regulations) howManyInShinyGoldBag() int {
+	howManyIn := make(map[color]int)
+
+	for len(howManyIn) < len(*reg) {
+		for bag, inBag := range *reg {
+			if _, known := howManyIn[bag]; known {
+				continue
+			}
+			unknownSubBags := len(inBag)
+			bagsInThisBag := 0
+			for _, content := range inBag {
+				subBagBags, subBagKnown := howManyIn[content.bag]
+				if subBagKnown {
+					bagsInThisBag += content.num * (1 + subBagBags)
+					unknownSubBags--
+				}
+			}
+			if unknownSubBags == 0 {
+				howManyIn[bag] = bagsInThisBag
+			}
+		}
+	}
+
+	return howManyIn["shiny gold"]
+}
+
 var lineRE = regexp.MustCompile(`(.+) bags contain (?:(no other bags)|(.+))\.`)
 var contentsRE = regexp.MustCompile(`(\d+) (.+) bags?`)
 
@@ -100,4 +126,5 @@ func main() {
 	regulations := parse(string(input))
 
 	fmt.Println(regulations.howManyCanHoldShinyGoldBag())
+	fmt.Println(regulations.howManyInShinyGoldBag())
 }
