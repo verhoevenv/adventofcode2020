@@ -18,10 +18,12 @@ type instruction struct {
 }
 type program []instruction
 
-func (p *program) accumulateUntilLoopDetected() int {
+func (p *program) accumulateWithLoopDetection() (int, bool) {
 	//doing some hard work just to prove a point(er)
 	var execution *instruction = &(*p)[0] //Go is noisy C
 	const instrSize uintptr = unsafe.Sizeof(*execution)
+	var programBoundary = uintptr(unsafe.Pointer(execution)) +
+		(instrSize * uintptr(len(*p)))
 
 	var accumulator int = 0
 	visited := make(map[uintptr]bool)
@@ -35,8 +37,11 @@ func (p *program) accumulateUntilLoopDetected() int {
 		// (dear colleagues, I would never do this in production code)
 		ep := uintptr(unsafe.Pointer(execution))
 
+		if ep >= programBoundary {
+			return accumulator, true
+		}
 		if visited[ep] {
-			break
+			return accumulator, false
 		}
 		visited[ep] = true
 
@@ -54,8 +59,37 @@ func (p *program) accumulateUntilLoopDetected() int {
 
 		execution = (*instruction)(unsafe.Pointer(ep))
 	}
+}
 
-	return accumulator
+func (p *program) fixProgram() int {
+	for i, instruction := range *p {
+		clone := p.deepCopy()
+		switch instruction.op {
+		case "jmp":
+			(*clone)[i].op = "nop"
+		case "nop":
+			(*clone)[i].op = "jmp"
+		default:
+			continue
+		}
+		accResult, terminatedNormally := clone.accumulateWithLoopDetection()
+
+		if terminatedNormally {
+			return accResult
+		}
+	}
+
+	panic("could not fix program")
+}
+
+func (p *program) deepCopy() *program {
+	result := make(program, 0)
+
+	for _, instr := range *p {
+		result = append(result, instruction{instr.op, instr.arg})
+	}
+
+	return &result
 }
 
 var instructionRE = regexp.MustCompile(`(.+) ([+-]\d+)`)
@@ -87,5 +121,5 @@ func main() {
 
 	program := parse(string(input))
 
-	fmt.Println(program.accumulateUntilLoopDetected())
+	fmt.Println(program.fixProgram())
 }
