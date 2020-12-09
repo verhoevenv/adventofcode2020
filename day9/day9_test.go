@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -69,6 +70,20 @@ func TestFindNonSumNumber(t *testing.T) {
 	if result != 127 {
 		t.Errorf("FindNonSumNumber was incorrect, got: %v, want: %v.",
 			result, 127)
+	}
+
+}
+
+func TestFindContiguousSetThatSumsTo(t *testing.T) {
+	var data = []uint64{35, 20, 15, 25, 47, 40, 62, 55, 65,
+		95, 102, 117, 150, 182, 127, 219, 299, 277, 309, 576}
+
+	xmas := makeXMAS(data, 5)
+	result := xmas.findContiguousSetThatSumsTo(127)
+
+	if !reflect.DeepEqual(result, []uint64{15, 25, 47, 40}) {
+		t.Errorf("FindNonSumNumber was incorrect, got: %v, want: %v.",
+			result, []uint64{15, 25, 47, 40})
 	}
 
 }

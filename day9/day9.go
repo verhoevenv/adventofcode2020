@@ -44,6 +44,45 @@ func (xmas *xmasStream) findNonSumNumber() uint64 {
 	}
 }
 
+func (xmas *xmasStream) findContiguousSetThatSumsTo(wanted uint64) []uint64 {
+	begin := 0
+	end := 1
+	currSum := xmas.data[0]
+
+	for {
+		switch {
+		case currSum == wanted:
+			return xmas.data[begin:end]
+		case currSum < wanted:
+			currSum += xmas.data[end]
+			end++
+		case currSum > wanted:
+			currSum -= xmas.data[begin]
+			begin++
+		}
+	}
+}
+
+func min(arr []uint64) uint64 {
+	m := arr[0]
+	for _, e := range arr {
+		if e < m {
+			m = e
+		}
+	}
+	return m
+}
+
+func max(arr []uint64) uint64 {
+	m := arr[0]
+	for _, e := range arr {
+		if e > m {
+			m = e
+		}
+	}
+	return m
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	numbers := make([]uint64, 0)
@@ -56,5 +95,9 @@ func main() {
 	}
 	xmas := makeXMAS(numbers, 25)
 
-	fmt.Println(xmas.findNonSumNumber())
+	nonSumNumber := xmas.findNonSumNumber()
+	set := xmas.findContiguousSetThatSumsTo(nonSumNumber)
+	weakness := min(set) + max(set)
+
+	fmt.Println(weakness)
 }
