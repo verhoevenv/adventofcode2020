@@ -54,14 +54,50 @@ func (s *ship) navigate(is []navigationInstruction) {
 			s.head -= i.value
 		case 'F':
 			sin, cos := math.Sincos(degToRad(s.head))
-			s.pos.x += int(cos * float64(i.value))
-			s.pos.y += int(sin * float64(i.value))
+			s.pos.x += int(math.Round(cos * float64(i.value)))
+			s.pos.y += int(math.Round(sin * float64(i.value)))
 		}
 	}
 }
 
 func (s *ship) getPos() xy {
 	return s.pos
+}
+
+type waypoint struct {
+	shipPos        xy
+	waypointRelPos xy
+}
+
+func makeWaypoint() *waypoint {
+	return &waypoint{xy{0, 0}, xy{10, 1}}
+}
+
+func (w *waypoint) navigate(is []navigationInstruction) {
+	for _, i := range is {
+		switch i.action {
+		case 'N':
+			w.waypointRelPos.y += i.value
+		case 'S':
+			w.waypointRelPos.y -= i.value
+		case 'E':
+			w.waypointRelPos.x += i.value
+		case 'W':
+			w.waypointRelPos.x -= i.value
+		case 'L':
+			w.waypointRelPos = rotate(w.waypointRelPos, i.value)
+		case 'R':
+			w.waypointRelPos = rotate(w.waypointRelPos, -i.value)
+		case 'F':
+			d := scale(w.waypointRelPos, i.value)
+			w.shipPos.x += d.x
+			w.shipPos.y += d.y
+		}
+	}
+}
+
+func (w *waypoint) getPos() xy {
+	return w.shipPos
 }
 
 func parse(iStr string) []navigationInstruction {
@@ -83,6 +119,21 @@ func degToRad(deg int) float64 {
 	return float64(deg) / 180 * math.Pi
 }
 
+func rotate(vec xy, degreeAngle int) xy {
+	sin, cos := math.Sincos(degToRad(degreeAngle))
+	return xy{
+		int(math.Round(float64(vec.x)*cos - float64(vec.y)*sin)),
+		int(math.Round(float64(vec.x)*sin + float64(vec.y)*cos)),
+	}
+}
+
+func scale(vec xy, scalar int) xy {
+	return xy{
+		vec.x * scalar,
+		vec.y * scalar,
+	}
+}
+
 func mDist(p xy) int {
 	return abs(p.x) + abs(p.y)
 }
@@ -98,9 +149,9 @@ func abs(v int) int {
 func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
-	ship := makeShip()
+	ship := makeWaypoint()
 	instructions := parse(string(input))
 	navigateBy(ship, instructions)
 
-	fmt.Println(mDist(ship.pos))
+	fmt.Println(mDist(ship.getPos()))
 }

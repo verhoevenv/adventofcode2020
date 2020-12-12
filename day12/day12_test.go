@@ -19,6 +19,7 @@ func TestNavigate(t *testing.T) {
 		endPos xy
 	}{
 		{makeShip(), xy{17, -8}},
+		{makeWaypoint(), xy{214, -72}},
 	}
 
 	for _, table := range tables {
