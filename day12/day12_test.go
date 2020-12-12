@@ -12,15 +12,22 @@ R90
 F11`
 
 func TestNavigate(t *testing.T) {
-	ship := makeShip()
 	instructions := parse(instuctionsStr)
 
-	ship.navigate(instructions)
+	tables := []struct {
+		nav    navigable
+		endPos xy
+	}{
+		{makeShip(), xy{17, -8}},
+	}
 
-	expected := xy{17, -8}
-	if !reflect.DeepEqual(ship.pos, expected) {
-		t.Errorf("Navigate was incorrect, got: %v, want: %v.",
-			ship.pos, expected)
+	for _, table := range tables {
+		navigateBy(table.nav, instructions)
+		result := table.nav.getPos()
+		if !reflect.DeepEqual(result, table.endPos) {
+			t.Errorf("Navigate of %v was incorrect, got: %v, want: %v.",
+				table.nav, result, table.endPos)
+		}
 	}
 }
 

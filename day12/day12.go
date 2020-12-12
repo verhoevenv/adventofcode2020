@@ -9,9 +9,13 @@ import (
 	"strings"
 )
 
-type ship struct {
-	pos  xy
-	head int
+type navigable interface {
+	navigate(is []navigationInstruction)
+	getPos() xy
+}
+
+func navigateBy(nav navigable, is []navigationInstruction) {
+	nav.navigate(is)
 }
 
 type xy struct {
@@ -24,12 +28,13 @@ type navigationInstruction struct {
 	value  int
 }
 
-func makeShip() *ship {
-	return &ship{xy{0, 0}, 0}
+type ship struct {
+	pos  xy
+	head int
 }
 
-func degToRad(deg int) float64 {
-	return float64(deg) / 180 * math.Pi
+func makeShip() *ship {
+	return &ship{xy{0, 0}, 0}
 }
 
 func (s *ship) navigate(is []navigationInstruction) {
@@ -55,6 +60,10 @@ func (s *ship) navigate(is []navigationInstruction) {
 	}
 }
 
+func (s *ship) getPos() xy {
+	return s.pos
+}
+
 func parse(iStr string) []navigationInstruction {
 	result := make([]navigationInstruction, 0)
 
@@ -68,6 +77,10 @@ func parse(iStr string) []navigationInstruction {
 	}
 
 	return result
+}
+
+func degToRad(deg int) float64 {
+	return float64(deg) / 180 * math.Pi
 }
 
 func mDist(p xy) int {
@@ -87,7 +100,7 @@ func main() {
 
 	ship := makeShip()
 	instructions := parse(string(input))
-	ship.navigate(instructions)
+	navigateBy(ship, instructions)
 
 	fmt.Println(mDist(ship.pos))
 }
