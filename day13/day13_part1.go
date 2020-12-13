@@ -27,7 +27,7 @@ func findMinWaitTime(s *schedule) (int, int) {
 	return minWaitTime, minBusID
 }
 
-func parse(iStr string) schedule {
+func parsePart1(iStr string) schedule {
 	lines := strings.Split(iStr, "\n")
 
 	departTime, err := strconv.Atoi(lines[0])
@@ -48,10 +48,10 @@ func parse(iStr string) schedule {
 	return schedule{departTime, busIDs}
 }
 
-func main() {
+func part1Main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
-	schedule := parse(string(input))
+	schedule := parsePart1(string(input))
 
 	time, busID := findMinWaitTime(&schedule)
 

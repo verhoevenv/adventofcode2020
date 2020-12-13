@@ -8,7 +8,7 @@ var notesStr = `939
 7,13,x,x,59,x,31,19`
 
 func TestFindNextDepartTime(t *testing.T) {
-	schedule := parse(notesStr)
+	schedule := parsePart1(notesStr)
 
 	result, _ := findMinWaitTime(&schedule)
 
