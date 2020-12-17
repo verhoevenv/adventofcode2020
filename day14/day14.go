@@ -10,16 +10,18 @@ import (
 )
 
 type mask struct {
-	orig      string
-	clearMask uint64
-	setMask   uint64
+	orig       string
+	clearMask  uint64
+	setMask    uint64
+	floatyBits []uint64
 }
 
 func makeMask(in string) *mask {
 	clearMask := uint64(0)
 	setMask := uint64(0)
+	floatyBits := make([]uint64, 0)
 
-	for _, b := range in {
+	for i, b := range in {
 		clearMask = clearMask << 1
 		setMask = setMask << 1
 
@@ -28,6 +30,8 @@ func makeMask(in string) *mask {
 			setMask++
 		case '0':
 			clearMask++
+		case 'X':
+			floatyBits = append(floatyBits, 1<<(35-i))
 		}
 	}
 
@@ -35,12 +39,36 @@ func makeMask(in string) *mask {
 		in,
 		clearMask,
 		setMask,
+		floatyBits,
 	}
 }
 
 func (m *mask) applyToVal(val memVal) memVal {
 	asInt := uint64(val)
 	return memVal((asInt | m.setMask) &^ m.clearMask)
+}
+
+func (m *mask) applyToAddr(original memAddr) []memAddr {
+	result := make([]memAddr, 1)
+	masked := memAddr(uint64(original) | m.setMask)
+
+	result[0] = masked
+
+	for _, floatMask := range m.floatyBits {
+		expandedResult := make([]memAddr, 0, len(result)*2)
+
+		for _, addr := range result {
+			asInt := uint64(addr)
+
+			v1 := memAddr((asInt | floatMask))
+			v2 := memAddr((asInt &^ floatMask))
+			expandedResult = append(expandedResult, v1, v2)
+		}
+
+		result = expandedResult
+	}
+
+	return result
 }
 
 type sys struct {
@@ -75,6 +103,22 @@ func (s *sys) run(line string) {
 	}
 }
 
+func (s *sys) runV2(line string) {
+	maskMatch := setMaskLine.FindStringSubmatch(line)
+	if maskMatch != nil {
+		s.currMask = makeMask(maskMatch[1])
+	}
+	memMatch := setMemLine.FindStringSubmatch(line)
+	if memMatch != nil {
+		a := memAddr(unsafeAtoi(memMatch[1]))
+		v := memVal(unsafeAtoi(memMatch[2]))
+
+		for _, decodedA := range s.currMask.applyToAddr(a) {
+			s.mem[decodedA] = v
+		}
+	}
+}
+
 func unsafeAtoi(in string) uint64 {
 	v, e := strconv.Atoi(in)
 	if e != nil {
@@ -86,6 +130,12 @@ func unsafeAtoi(in string) uint64 {
 func (s *sys) runProgram(program string) {
 	for _, line := range strings.Split(program, "\n") {
 		s.run(line)
+	}
+}
+
+func (s *sys) runProgramV2(program string) {
+	for _, line := range strings.Split(program, "\n") {
+		s.runV2(line)
 	}
 }
 
@@ -101,7 +151,7 @@ func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
 	sys := makeSys()
-	sys.runProgram(string(input))
+	sys.runProgramV2(string(input))
 
 	fmt.Println(sys.sumOfMemory())
 }
