@@ -5,32 +5,28 @@ import (
 )
 
 func startMemory(start []int) func() int {
-	alreadySpoken := make([]int, 0)
+	alreadySpoken := make(map[int]int)
+	lastSpoken := -1
+	turn := 0
 
 	return func() int {
+		turn++
+
+		toSpeak := -1
 		if len(alreadySpoken) < len(start) {
-			toSpeak := start[len(alreadySpoken)]
-			alreadySpoken = append(alreadySpoken, toSpeak)
-			return toSpeak
-		}
-
-		lastSpoken := alreadySpoken[len(alreadySpoken)-1]
-
-		spokenBefore := -1
-		toSpeak := 0
-
-		for i := len(alreadySpoken) - 1; i >= 0; i-- {
-			if alreadySpoken[i] == lastSpoken {
-				if spokenBefore == -1 {
-					spokenBefore = i
-				} else {
-					toSpeak = spokenBefore - i
-					break
-				}
+			toSpeak = start[len(alreadySpoken)]
+		} else {
+			prevTurn, notFirstTime := alreadySpoken[lastSpoken]
+			if notFirstTime {
+				toSpeak = turn - prevTurn
+			} else {
+				toSpeak = 0
 			}
 		}
 
-		alreadySpoken = append(alreadySpoken, toSpeak)
+		alreadySpoken[lastSpoken] = turn
+		lastSpoken = toSpeak
+
 		return toSpeak
 	}
 }
@@ -47,7 +43,7 @@ func main() {
 	input := []int{2, 15, 0, 9, 1, 20}
 
 	mem := startMemory(input)
-	result := nTimes(2020, mem)
+	result := nTimes(30000000, mem)
 
 	fmt.Println(result)
 }
