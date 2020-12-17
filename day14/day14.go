@@ -38,19 +38,23 @@ func makeMask(in string) *mask {
 	}
 }
 
-func (m *mask) apply(val uint64) uint64 {
-	return (val | m.setMask) &^ m.clearMask
+func (m *mask) applyToVal(val memVal) memVal {
+	asInt := uint64(val)
+	return memVal((asInt | m.setMask) &^ m.clearMask)
 }
 
 type sys struct {
 	currMask *mask
-	mem      map[uint64]uint64
+	mem      map[memAddr]memVal
 }
+
+type memAddr uint64
+type memVal uint64
 
 func makeSys() *sys {
 	return &sys{
 		nil,
-		make(map[uint64]uint64),
+		make(map[memAddr]memVal),
 	}
 }
 
@@ -64,10 +68,10 @@ func (s *sys) run(line string) {
 	}
 	memMatch := setMemLine.FindStringSubmatch(line)
 	if memMatch != nil {
-		a := unsafeAtoi(memMatch[1])
-		v := unsafeAtoi(memMatch[2])
+		a := memAddr(unsafeAtoi(memMatch[1]))
+		v := memVal(unsafeAtoi(memMatch[2]))
 
-		s.mem[a] = s.currMask.apply(v)
+		s.mem[a] = s.currMask.applyToVal(v)
 	}
 }
 
@@ -88,7 +92,7 @@ func (s *sys) runProgram(program string) {
 func (s *sys) sumOfMemory() uint64 {
 	counter := uint64(0)
 	for _, v := range s.mem {
-		counter += v
+		counter += uint64(v)
 	}
 	return counter
 }

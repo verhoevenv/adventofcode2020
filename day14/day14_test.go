@@ -13,8 +13,8 @@ func TestApplyMask(t *testing.T) {
 	mask := makeMask("XXXXXXXXXXXXXXXXXXXXXXXXXXXXX1XXXX0X")
 
 	tables := []struct {
-		val       uint64
-		maskedVal uint64
+		val       memVal
+		maskedVal memVal
 	}{
 		{11, 73},
 		{101, 101},
@@ -22,7 +22,7 @@ func TestApplyMask(t *testing.T) {
 	}
 
 	for _, table := range tables {
-		result := mask.apply(table.val)
+		result := mask.applyToVal(table.val)
 		if result != table.maskedVal {
 			t.Errorf("Masking of %v was incorrect, got: %v, want: %v.",
 				table.val, result, table.maskedVal)
