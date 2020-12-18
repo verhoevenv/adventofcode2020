@@ -31,19 +31,79 @@ func inRange(l1 int, h1 int, l2 int, h2 int) func(int) bool {
 func findCompletelyInvalidFields(rules []fieldRule, tickets []ticket) []int {
 	result := make([]int, 0)
 	for _, ticket := range tickets {
-		for _, value := range ticket {
-			noneValid := true
-			for _, rule := range rules {
-				if rule.canHave(value) {
-					noneValid = false
-					break
-				}
+		result = append(result, invalidFields(rules, ticket)...)
+	}
+	return result
+}
+
+func invalidFields(rules []fieldRule, t ticket) []int {
+	result := make([]int, 0)
+	for _, value := range t {
+		noneValid := true
+		for _, rule := range rules {
+			if rule.canHave(value) {
+				noneValid = false
+				break
 			}
-			if noneValid {
-				result = append(result, value)
+		}
+		if noneValid {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func filterOutInvalidTickets(rules []fieldRule, tickets []ticket) []ticket {
+	result := make([]ticket, 0)
+	for _, ticket := range tickets {
+		if len(invalidFields(rules, ticket)) == 0 {
+			result = append(result, ticket)
+		}
+	}
+	return result
+}
+
+func determineOrdering(rules []fieldRule, validTickets []ticket) []string {
+	ruleOutFieldXHasRuleY := make([][]bool, len(rules))
+	for i := 0; i < len(rules); i++ {
+		ruleOutFieldXHasRuleY[i] = make([]bool, len(rules))
+	}
+
+	for _, ticket := range validTickets {
+		for field := 0; field < len(rules); field++ {
+			for rule := 0; rule < len(rules); rule++ {
+				if !rules[rule].canHave(ticket[field]) {
+					ruleOutFieldXHasRuleY[field][rule] = true
+				}
 			}
 		}
 	}
+
+	knownFields := make(map[int]string)
+	for len(knownFields) < len(rules) {
+		for field := 0; field < len(rules); field++ {
+			possibilities := make([]int, 0)
+			for rule := 0; rule < len(rules); rule++ {
+				if !ruleOutFieldXHasRuleY[field][rule] {
+					possibilities = append(possibilities, rule)
+				}
+			}
+			if len(possibilities) == 1 {
+				knownFields[field] = rules[possibilities[0]].field
+				for otherField := 0; otherField < len(rules); otherField++ {
+					if otherField != field {
+						ruleOutFieldXHasRuleY[otherField][possibilities[0]] = true
+					}
+				}
+			}
+		}
+	}
+
+	result := make([]string, len(rules))
+	for i := 0; i < len(rules); i++ {
+		result[i] = knownFields[i]
+	}
+
 	return result
 }
 
@@ -108,8 +168,15 @@ func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
 	notes := parse(string(input))
+	valids := filterOutInvalidTickets(notes.rules, notes.nearby)
+	ordering := determineOrdering(notes.rules, valids)
 
-	result := findCompletelyInvalidFields(notes.rules, notes.nearby)
+	mult := 1
+	for i, v := range ordering {
+		if strings.HasPrefix(v, "departure") {
+			mult *= notes.your[i]
+		}
+	}
 
-	fmt.Println(sum(result))
+	fmt.Println(mult)
 }
