@@ -51,6 +51,11 @@ func parseRule(in string, allRules rules) rule {
 	return following(nextRules, allRules)
 }
 
+func update8And11(allRules rules) {
+	allRules[8] = parseRule("42 | 42 8", allRules)
+	allRules[11] = parseRule("42 31 | 42 11 31", allRules)
+}
+
 type split struct {
 	pre  string
 	post string
@@ -128,6 +133,8 @@ func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
 	rules, messages := parse(string(input))
+
+	update8And11(rules)
 
 	count := 0
 	for _, m := range messages {
