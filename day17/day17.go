@@ -10,7 +10,11 @@ import (
 type void struct{}
 
 type layout struct {
-	activeCubes map[xyz]void
+	activeCubes map[locable]void
+}
+
+type locable interface {
+	calcNeighbours() []locable
 }
 
 type xyz struct {
@@ -19,12 +23,27 @@ type xyz struct {
 	z int
 }
 
-func (me *xyz) equals(other *xyz) bool {
-	return me.x == other.x && me.y == other.y && me.z == other.z
+func (loc xyz) calcNeighbours() []locable {
+	result := make([]locable, 0)
+	for _, dx := range []int{-1, 0, 1} {
+		for _, dy := range []int{-1, 0, 1} {
+			for _, dz := range []int{-1, 0, 1} {
+				candidate := xyz{loc.x + dx, loc.y + dy, loc.z + dz}
+				if !loc.equals(candidate) {
+					result = append(result, candidate)
+				}
+			}
+		}
+	}
+	return result
+}
+
+func (loc xyz) equals(other xyz) bool {
+	return loc.x == other.x && loc.y == other.y && loc.z == other.z
 }
 
 func makeLayout(layoutStr string) *layout {
-	result := make(map[xyz]void)
+	result := make(map[locable]void)
 
 	for y, line := range strings.Split(layoutStr, "\n") {
 		for x, r := range line {
@@ -37,39 +56,22 @@ func makeLayout(layoutStr string) *layout {
 	return &layout{result}
 }
 
-type neighbours func(loc *xyz) []xyz
+type neighbours func(loc locable) []locable
 
-var surroundingNeighbours = withCache(calcNeighbours)
+var surroundingNeighbours neighbours = func() neighbours {
+	var neighboursCache = make(map[locable][]locable)
 
-func withCache(f neighbours) neighbours {
-	var neighboursCache = make(map[xyz][]xyz)
-
-	return func(loc *xyz) []xyz {
-		if v, ok := neighboursCache[*loc]; ok {
+	return func(loc locable) []locable {
+		if v, ok := neighboursCache[loc]; ok {
 			return v
 		}
-		result := f(loc)
-		neighboursCache[*loc] = result
+		result := loc.calcNeighbours()
+		neighboursCache[loc] = result
 		return result
 	}
-}
+}()
 
-func calcNeighbours(loc *xyz) []xyz {
-	result := make([]xyz, 0)
-	for _, dx := range []int{-1, 0, 1} {
-		for _, dy := range []int{-1, 0, 1} {
-			for _, dz := range []int{-1, 0, 1} {
-				candidate := xyz{loc.x + dx, loc.y + dy, loc.z + dz}
-				if !loc.equals(&candidate) {
-					result = append(result, candidate)
-				}
-			}
-		}
-	}
-	return result
-}
-
-func (l *layout) countActive(locs []xyz) int {
+func (l *layout) countActive(locs []locable) int {
 	counter := 0
 	for _, loc := range locs {
 		if _, ok := l.activeCubes[loc]; ok {
@@ -84,17 +86,17 @@ func (l *layout) countAllActive() int {
 }
 
 func (l *layout) cycle() {
-	pois := make(map[xyz]void)
+	pois := make(map[locable]void)
 	for active := range l.activeCubes {
-		for _, loc := range surroundingNeighbours(&active) {
+		for _, loc := range surroundingNeighbours(active) {
 			pois[loc] = void{}
 		}
 	}
 
-	result := make(map[xyz]void)
+	result := make(map[locable]void)
 	for loc := range pois {
 		_, isActive := l.activeCubes[loc]
-		activeNeightbours := l.countActive(surroundingNeighbours(&loc))
+		activeNeightbours := l.countActive(surroundingNeighbours(loc))
 
 		switch {
 		case isActive && (activeNeightbours == 2 || activeNeightbours == 3):

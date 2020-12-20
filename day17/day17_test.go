@@ -12,9 +12,9 @@ var initialCubes = `.#.
 func TestCalcNeighbours(t *testing.T) {
 	given := xyz{1, 2, 3}
 
-	result := calcNeighbours(&given)
+	result := given.calcNeighbours()
 
-	expected := []xyz{
+	expected := []locable{
 		xyz{0, 1, 2}, xyz{0, 1, 3}, xyz{0, 1, 4},
 		xyz{0, 2, 2}, xyz{0, 2, 3}, xyz{0, 2, 4},
 		xyz{0, 3, 2}, xyz{0, 3, 3}, xyz{0, 3, 4},
