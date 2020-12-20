@@ -42,13 +42,45 @@ func (loc xyz) equals(other xyz) bool {
 	return loc.x == other.x && loc.y == other.y && loc.z == other.z
 }
 
-func makeLayout(layoutStr string) *layout {
+type xyzw struct {
+	x int
+	y int
+	z int
+	w int
+}
+
+func (loc xyzw) calcNeighbours() []locable {
+	result := make([]locable, 0)
+	for _, dx := range []int{-1, 0, 1} {
+		for _, dy := range []int{-1, 0, 1} {
+			for _, dz := range []int{-1, 0, 1} {
+				for _, dw := range []int{-1, 0, 1} {
+					candidate := xyzw{loc.x + dx, loc.y + dy, loc.z + dz, loc.w + dw}
+					if !loc.equals(candidate) {
+						result = append(result, candidate)
+					}
+				}
+			}
+		}
+	}
+	return result
+}
+
+func (loc xyzw) equals(other xyzw) bool {
+	return loc.x == other.x && loc.y == other.y && loc.z == other.z && loc.w == other.w
+}
+
+func makeLayout(layoutStr string, dim int) *layout {
 	result := make(map[locable]void)
 
 	for y, line := range strings.Split(layoutStr, "\n") {
 		for x, r := range line {
 			if r == '#' {
-				result[xyz{x, y, 0}] = void{}
+				if dim == 3 {
+					result[xyz{x, y, 0}] = void{}
+				} else {
+					result[xyzw{x, y, 0, 0}] = void{}
+				}
 			}
 		}
 	}
@@ -112,7 +144,7 @@ func (l *layout) cycle() {
 func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
-	layout := makeLayout(string(input))
+	layout := makeLayout(string(input), 4)
 
 	for i := 0; i < 6; i++ {
 		layout.cycle()

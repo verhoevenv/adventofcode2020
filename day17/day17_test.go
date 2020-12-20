@@ -33,8 +33,20 @@ func TestCalcNeighbours(t *testing.T) {
 
 }
 
+func TestCalcNeighbours4Dim(t *testing.T) {
+	given := xyzw{1, 2, 3, 4}
+
+	result := given.calcNeighbours()
+
+	if len(result) != 80 {
+		t.Errorf("CalcNeighbours was incorrect, got: %v, want: %v elems.",
+			result, 80)
+	}
+
+}
+
 func TestCountAllActive(t *testing.T) {
-	layout := makeLayout(initialCubes)
+	layout := makeLayout(initialCubes, 3)
 
 	totalActiveCubes := map[int]int{
 		1: 11,
@@ -50,6 +62,28 @@ func TestCountAllActive(t *testing.T) {
 			result := layout.countAllActive()
 			if expected != result {
 				t.Errorf("CountAllActive was incorrect, got: %v, want: %v.",
+					result, expected)
+			}
+		}
+	}
+}
+
+func TestCountAllActive4Dim(t *testing.T) {
+	layout := makeLayout(initialCubes, 4)
+
+	totalActiveCubes := map[int]int{
+		1: 29,
+		2: 60,
+		6: 848,
+	}
+
+	for i := 1; i <= 6; i++ {
+		layout.cycle()
+
+		if expected, ok := totalActiveCubes[i]; ok {
+			result := layout.countAllActive()
+			if expected != result {
+				t.Errorf("CountAllActive in 4 dimensions was incorrect, got: %v, want: %v.",
 					result, expected)
 			}
 		}
