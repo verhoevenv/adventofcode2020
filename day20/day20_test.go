@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -23,34 +24,6 @@ func TestArrangeTiles(t *testing.T) {
 	}
 }
 
-func TestOriginalSide(t *testing.T) {
-	tables := []struct {
-		side     side
-		orient   orientation
-		expected borderReading
-	}{
-		{top, orientation{false, original}, borderReading{top, true}},
-		{left, orientation{false, original}, borderReading{left, false}},
-		{bot, orientation{false, original}, borderReading{bot, false}},
-		{left, orientation{true, original}, borderReading{right, true}},
-		{bot, orientation{false, rotate180}, borderReading{top, false}},
-		{top, orientation{true, original}, borderReading{top, false}},
-		{top, orientation{false, rotate90}, borderReading{right, true}},
-		{right, orientation{true, rotate180}, borderReading{right, false}},
-		{top, orientation{true, rotate90}, borderReading{left, false}},
-		{top, orientation{true, rotate180}, borderReading{bot, false}},
-		{bot, orientation{true, rotate180}, borderReading{top, true}},
-	}
-
-	for _, table := range tables {
-		result := originalSide(table.side, table.orient)
-		if result != table.expected {
-			t.Errorf("Original side of (%v, %v) was incorrect, got: %v, want: %v.",
-				table.side, table.orient, result, table.expected)
-		}
-	}
-}
-
 func TestBorder(t *testing.T) {
 	tile := parseTile(`Tile 2311:
 ..##.#..#.
@@ -65,25 +38,112 @@ func TestBorder(t *testing.T) {
 ..###..###`)
 
 	tables := []struct {
-		reading  borderReading
-		expected border
+		side        side
+		orientation orientation
+		expected    border
 	}{
-		{borderReading{top, true}, 0b0011010010},
-		{borderReading{top, false}, 0b0100101100},
-		{borderReading{left, true}, 0b0100111110},
-		{borderReading{left, false}, 0b0111110010},
-		{borderReading{right, true}, 0b0001011001},
-		{borderReading{right, false}, 0b1001101000},
-		{borderReading{bot, true}, 0b1110011100},
-		{borderReading{bot, false}, 0b0011100111},
+		{top, orientation{false, original}, 0b0011010010},
+		{left, orientation{false, original}, 0b0111110010},
+
+		{left, orientation{false, rotate90}, 0b0100101100},
+		{bot, orientation{false, rotate180}, 0b0100101100},
+		{right, orientation{false, rotate270}, 0b0011010010},
+
+		{right, orientation{true, original}, 0b0111110010},
+		{left, orientation{true, original}, 0b0001011001},
+
+		{top, orientation{true, original}, 0b0100101100},
+		{top, orientation{true, rotate90}, 0b00111110010},
+		{right, orientation{true, rotate90}, 0b0011100111},
 	}
 
 	for _, table := range tables {
-		result := borderOfTile(&tile, table.reading)
+		oriented := orientedTile{&tile, table.orientation}
+		result := borderOf(oriented, table.side)
 		if result != table.expected {
-			t.Errorf("Border of %v was incorrect, got: %v, want: %v.",
-				table.reading, result, table.expected)
+			t.Errorf("Border of side %v, orientation %v was incorrect, got: %v, want: %v.",
+				table.side, table.orientation, result, table.expected)
 		}
+	}
+
+}
+
+var properlyFlippedImage = asSnapshot(`.####...#####..#...###..
+#####..#..#.#.####..#.#.
+.#.#...#.###...#.##.##..
+#.#.##.###.#.##.##.#####
+..##.###.####..#.####.##
+...#.#..##.##...#..#..##
+#.##.#..#.#..#..##.#.#..
+.###.##.....#...###.#...
+#.####.#.#....##.#..#.#.
+##...#..#....#..#...####
+..#.##...###..#.#####..#
+....#.##.#.#####....#...
+..##.##.###.....#.##..#.
+#...#...###..####....##.
+.#.##...#.##.#.#.###...#
+#.###.#..####...##..#...
+#.###...#.##...#.######.
+.###.###.#######..#####.
+..##.#..#..#.#######.###
+#.#..##.########..#..##.
+#.#####..#.#...##..#....
+#....##..#.#########..##
+#...#.....#..##...###.##
+#..###....##.#...##.##.#`)
+
+func asSnapshot(in string) snapshot {
+	result := make([][]bool, 0)
+
+	for i, line := range strings.Split(in, "\n") {
+		result = append(result, make([]bool, len(line)))
+		for j, c := range line {
+			if c == '#' {
+				result[i][j] = true
+			}
+		}
+	}
+
+	return snapshot(result)
+}
+
+func TestCountMonsters(t *testing.T) {
+	result := countMonsters(&properlyFlippedImage)
+
+	if result != 2 {
+		t.Errorf("Expected 2 sea monsters, found %v",
+			result)
+	}
+}
+
+func TestMakeOrientedSnapshot(t *testing.T) {
+	tiles := parse(tiles)
+	arrangement := arrangeTiles(tiles)
+
+	result := makeOrientedSnapshot(arrangement)
+
+	for y := 0; y < len(properlyFlippedImage); y++ {
+		for x := 0; x < len(properlyFlippedImage); x++ {
+			if result.at(xy{x, y}) != properlyFlippedImage.at(xy{x, y}) {
+				t.Errorf("Snapshot at (%v, %v) was incorrect, got: %v, want: %v.",
+					x, y, result.at(xy{x, y}), properlyFlippedImage.at(xy{x, y}))
+			}
+		}
+	}
+
+}
+
+func TestDetermineRougness(t *testing.T) {
+	tiles := parse(tiles)
+	arrangement := arrangeTiles(tiles)
+	snapshot := makeOrientedSnapshot(arrangement)
+
+	result := determineRoughness(snapshot)
+
+	if result != 273 {
+		t.Errorf("Expected 273 roughness, found %v",
+			result)
 	}
 
 }

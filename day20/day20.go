@@ -26,6 +26,45 @@ type orientedTile struct {
 	orientation orientation
 }
 
+type booleanReadable interface {
+	at(pos xy) bool
+	sideSize() int //assuming square
+}
+
+func (t *tile) at(pos xy) bool {
+	return t.bits[pos.y][pos.x]
+}
+
+func (t *tile) sideSize() int {
+	return tileSize
+}
+
+func (t *orientedTile) at(pos xy) bool {
+	return at(pos, t.orientation, t.tile)
+}
+
+func (t *orientedTile) sideSize() int {
+	return tileSize
+}
+
+func at(pos xy, o orientation, b booleanReadable) bool {
+	s := b.sideSize()
+	switch o.rotate {
+	case rotate90:
+		pos = xy{s - pos.y - 1, pos.x}
+	case rotate180:
+		pos = xy{s - pos.x - 1, s - pos.y - 1}
+	case rotate270:
+		pos = xy{pos.y, s - pos.x - 1}
+	}
+
+	if o.flip {
+		pos = xy{s - pos.x - 1, pos.y}
+	}
+
+	return b.at(pos)
+}
+
 type side int
 
 const (
@@ -67,57 +106,24 @@ type borderReading struct {
 	clockwise bool
 }
 
-func originalSide(s side, o orientation) borderReading {
-	side := side((int(s) + int(o.rotate)) % 4)
-	readingDir := s == top || s == right
-
-	if o.flip {
-		if side == left {
-			side = right
-		} else if side == right {
-			side = left
-		}
-		readingDir = !readingDir
-	}
-
-	return borderReading{side, readingDir}
-}
-
 func borderOf(t orientedTile, s side) border {
-	return borderOfTile(t.tile, originalSide(s, t.orientation))
-}
-
-func borderOfTile(t *tile, b borderReading) border {
 	result := 0
+
 	for i := 0; i < tileSize; i++ {
 		result = result << 1
 
 		var loc xy
-		if b.clockwise {
-			switch b.side {
-			case top:
-				loc = xy{i, 0}
-			case right:
-				loc = xy{tileSize - 1, i}
-			case bot:
-				loc = xy{tileSize - 1 - i, tileSize - 1}
-			case left:
-				loc = xy{0, tileSize - 1 - i}
-			}
-		} else {
-			switch b.side {
-			case top:
-				loc = xy{tileSize - 1 - i, 0}
-			case right:
-				loc = xy{tileSize - 1, tileSize - 1 - i}
-			case bot:
-				loc = xy{i, tileSize - 1}
-			case left:
-				loc = xy{0, i}
-			}
+		switch s {
+		case top:
+			loc = xy{i, 0}
+		case right:
+			loc = xy{tileSize - 1, i}
+		case bot:
+			loc = xy{i, tileSize - 1}
+		case left:
+			loc = xy{0, i}
 		}
-
-		if t.bits[loc.y][loc.x] {
+		if t.at(loc) {
 			result++
 		}
 	}
@@ -133,21 +139,6 @@ type searchState struct {
 }
 
 func arrangeTiles(tiles []tile) [][]*orientedTile {
-	sidesToTileIDs := make(map[side]map[border][]orientedTile)
-	for _, side := range allSides {
-		sidesToTileIDs[side] = make(map[border][]orientedTile)
-	}
-
-	for i := range tiles {
-		for _, orientation := range allOrientations {
-			for _, side := range allSides {
-				border := borderOfTile(&tiles[i], originalSide(side, orientation))
-				orientedTile := orientedTile{&tiles[i], orientation}
-				sidesToTileIDs[side][border] = append(sidesToTileIDs[side][border], orientedTile)
-			}
-		}
-	}
-
 	tilePts := make([]*tile, len(tiles))
 	for i := range tiles {
 		tilePts[i] = &tiles[i]
@@ -171,8 +162,6 @@ func arrangeTiles(tiles []tile) [][]*orientedTile {
 		newStates := expandLast(toExpand)
 
 		for i := range newStates {
-			propagate(&newStates[i])
-
 			if allNil(newStates[i].unpickedTiles) {
 				return newStates[i].arrangement
 			}
@@ -228,10 +217,6 @@ func expandLast(lastState searchState) []searchState {
 	}
 
 	return newStates
-}
-
-func propagate(s *searchState) {
-	//TODO if too slow, implement forward propagation
 }
 
 func isInvalid(arrangement [][]*orientedTile) bool {
@@ -296,6 +281,136 @@ func unsafeAtoi(in string) int {
 	return v
 }
 
+var seaMonster = strings.Split(`
+                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   `, "\n")[1:]
+
+const pixelsInMonster = 15
+
+func countMonsters(image booleanReadable) int {
+	count := 0
+
+	monsterH := len(seaMonster)
+	monsterW := len(seaMonster[0])
+
+	size := image.sideSize()
+
+	for dy := 0; dy < size-monsterH; dy++ {
+		for dx := 0; dx < size-monsterW; dx++ {
+			if monsterAt(xy{dx, dy}, image) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func monsterAt(offset xy, image booleanReadable) bool {
+	monsterH := len(seaMonster)
+	monsterW := len(seaMonster[0])
+
+	for dy := 0; dy < monsterH; dy++ {
+		for dx := 0; dx < monsterW; dx++ {
+			if seaMonster[dy][dx] == '#' {
+				if !image.at(xy{offset.x + dx, offset.y + dy}) {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+type snapshot [][]bool
+
+func (s *snapshot) at(pos xy) bool {
+	return [][]bool(*s)[pos.y][pos.x]
+}
+func (s *snapshot) sideSize() int {
+	return len(*s)
+}
+
+type orientedSnapshot struct {
+	snapshot    *snapshot
+	orientation orientation
+}
+
+func (s *orientedSnapshot) at(pos xy) bool {
+	return at(pos, s.orientation, s.snapshot)
+}
+func (s *orientedSnapshot) sideSize() int {
+	return s.snapshot.sideSize()
+}
+
+type unborderedTile orientedTile
+
+func (s *unborderedTile) at(pos xy) bool {
+	return (*orientedTile)(s).at(xy{pos.x + 1, pos.y + 1})
+}
+func (s *unborderedTile) sideSize() int {
+	return (*orientedTile)(s).sideSize() - 2
+}
+
+func makeSnapshot(arrangements [][]*orientedTile) snapshot {
+	numTiles := len(arrangements)
+
+	withoutBorders := make([][]*unborderedTile, numTiles)
+	for i := 0; i < numTiles; i++ {
+		withoutBorders[i] = make([]*unborderedTile, numTiles)
+		for j := 0; j < numTiles; j++ {
+			withoutBorders[i][j] = (*unborderedTile)(arrangements[i][j])
+		}
+	}
+
+	newTileSize := tileSize - 2
+	picSideSize := numTiles * newTileSize
+
+	result := make([][]bool, picSideSize)
+	for i := 0; i < picSideSize; i++ {
+		result[i] = make([]bool, picSideSize)
+	}
+
+	for y := 0; y < picSideSize; y++ {
+		for x := 0; x < picSideSize; x++ {
+			tileAt := withoutBorders[y/newTileSize][x/newTileSize]
+			result[y][x] = tileAt.at(xy{x % newTileSize, y % newTileSize})
+		}
+	}
+
+	return result
+}
+
+func makeOrientedSnapshot(arrangement [][]*orientedTile) *orientedSnapshot {
+	shot := makeSnapshot(arrangement)
+
+	for _, o := range allOrientations {
+		os := &orientedSnapshot{&shot, o}
+		if countMonsters(os) > 0 {
+			return os
+		}
+	}
+
+	panic("No good orientation found!")
+}
+
+func determineRoughness(s *orientedSnapshot) int {
+	counter := 0
+
+	for x := 0; x < s.sideSize(); x++ {
+		for y := 0; y < s.sideSize(); y++ {
+			if s.at(xy{x, y}) {
+				counter++
+			}
+		}
+	}
+
+	numMonsters := countMonsters(s)
+
+	return counter - (numMonsters * pixelsInMonster)
+}
+
 func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
@@ -304,11 +419,15 @@ func main() {
 	arrangement := arrangeTiles(tiles)
 
 	sizeSide := len(arrangement) - 1
-	result := 1
-	result *= arrangement[0][0].tile.id
-	result *= arrangement[sizeSide][0].tile.id
-	result *= arrangement[0][sizeSide].tile.id
-	result *= arrangement[sizeSide][sizeSide].tile.id
+	multiplier := 1
+	multiplier *= arrangement[0][0].tile.id
+	multiplier *= arrangement[sizeSide][0].tile.id
+	multiplier *= arrangement[0][sizeSide].tile.id
+	multiplier *= arrangement[sizeSide][sizeSide].tile.id
+	fmt.Println(multiplier)
 
-	fmt.Println(result)
+	snapshot := makeOrientedSnapshot(arrangement)
+
+	roughness := determineRoughness(snapshot)
+	fmt.Println(roughness)
 }
