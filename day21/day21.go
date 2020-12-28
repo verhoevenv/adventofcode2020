@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -22,12 +23,17 @@ func parseLine(in string) line {
 	return line{ingredients, allergens}
 }
 
-func findIngredientsWithoutAllergens(in string) []string {
+func findInertIngredients(in string) ([]string, []string) {
+	lines := make([]line, 0)
+
 	allIngredients := make(map[string]bool)
 	allAllergens := make(map[string]bool)
 
 	for _, lineStr := range strings.Split(in, "\n") {
-		line := parseLine(lineStr)
+		lines = append(lines, parseLine(lineStr))
+	}
+
+	for _, line := range lines {
 		for _, ingredient := range line.ingredients {
 			allIngredients[ingredient] = true
 		}
@@ -44,9 +50,7 @@ func findIngredientsWithoutAllergens(in string) []string {
 		}
 	}
 
-	for _, lineStr := range strings.Split(in, "\n") {
-		line := parseLine(lineStr)
-
+	for _, line := range lines {
 		for ingredient := range allIngredients {
 			if !contains(line.ingredients, ingredient) {
 				for _, allergen := range line.allergens {
@@ -56,14 +60,45 @@ func findIngredientsWithoutAllergens(in string) []string {
 		}
 	}
 
-	result := make([]string, 0)
+	inertIgredients := make([]string, 0)
 	for ingredient, allergens := range canContain {
 		if len(allergens) == 0 {
-			result = append(result, ingredient)
+			inertIgredients = append(inertIgredients, ingredient)
 		}
 	}
 
-	return result
+	allergenOf := make(map[string]string)
+	change := true
+	for change {
+		change = false
+		for ingredient, allergens := range canContain {
+			if len(allergens) == 1 {
+				allergen := singleKeyFrom(allergens)
+				allergenOf[ingredient] = allergen
+				for otherIngredient := range allIngredients {
+					delete(canContain[otherIngredient], allergen)
+				}
+				change = true
+			}
+		}
+	}
+
+	canonicalList := make([]string, 0)
+	for ingredient := range allergenOf {
+		canonicalList = append(canonicalList, ingredient)
+	}
+	sort.Slice(canonicalList, func(i, j int) bool {
+		return allergenOf[canonicalList[i]] < allergenOf[canonicalList[j]]
+	})
+
+	return inertIgredients, canonicalList
+}
+
+func singleKeyFrom(m map[string]bool) string {
+	for k := range m {
+		return k
+	}
+	panic("no elem in map")
 }
 
 func contains(haystack []string, needle string) bool {
@@ -93,8 +128,9 @@ func countAll(list string, words []string) int {
 func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
-	ingredients := findIngredientsWithoutAllergens(string(input))
+	ingredients, list := findInertIngredients(string(input))
 	result := countAll(string(input), ingredients)
 
 	fmt.Println(result)
+	fmt.Println(strings.Join(list, ","))
 }

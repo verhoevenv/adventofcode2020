@@ -11,8 +11,8 @@ trh fvjkl sbzzf mxmxvkd (contains dairy)
 sqjhc fvjkl (contains soy)
 sqjhc mxmxvkd sbzzf (contains fish)`
 
-func TestFindIngredientsWithoutAllergens(t *testing.T) {
-	result := findIngredientsWithoutAllergens(list)
+func TestFindInertIngredients(t *testing.T) {
+	result, _ := findInertIngredients(list)
 
 	expectedIngredients := []string{"kfcds", "nhms", "sbzzf", "trh"}
 
@@ -21,13 +21,13 @@ func TestFindIngredientsWithoutAllergens(t *testing.T) {
 	})
 
 	if !reflect.DeepEqual(result, expectedIngredients) {
-		t.Errorf("findIngredientsWithoutAllergens was incorrect, got: %v, want: %v.",
+		t.Errorf("findInertIngredients was incorrect, got: %v, want: %v.",
 			result, expectedIngredients)
 	}
 }
 
 func TestCountIngredients(t *testing.T) {
-	ingredients := findIngredientsWithoutAllergens(list)
+	ingredients, _ := findInertIngredients(list)
 
 	result := countAll(list, ingredients)
 
@@ -36,5 +36,16 @@ func TestCountIngredients(t *testing.T) {
 	if result != expectedCount {
 		t.Errorf("countIngredients was incorrect, got: %v, want: %v.",
 			result, expectedCount)
+	}
+}
+
+func TestFindCanonicalList(t *testing.T) {
+	_, result := findInertIngredients(list)
+
+	expectedIngredients := []string{"mxmxvkd", "sqjhc", "fvjkl"}
+
+	if !reflect.DeepEqual(result, expectedIngredients) {
+		t.Errorf("findInertIngredients was incorrect, got: %v, want: %v.",
+			result, expectedIngredients)
 	}
 }
