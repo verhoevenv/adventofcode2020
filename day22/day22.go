@@ -15,7 +15,7 @@ type gamestate struct {
 
 type game struct {
 	gamestate
-	previousStates []gamestate //should benchmark vs []*gamestate
+	previousStates []*gamestate
 }
 
 const maxDeckSize = 100
@@ -95,12 +95,12 @@ type player int // 1|2
 func (g *game) playRecursive() player {
 	for {
 		for i := range g.previousStates {
-			if g.equalDecks(&g.previousStates[i]) {
+			if g.equalDecks(g.previousStates[i]) {
 				return 1
 			}
 		}
 
-		g.previousStates = append(g.previousStates, *g.copy())
+		g.previousStates = append(g.previousStates, g.copy())
 
 		if g.p1.isEmpty() {
 			return 2
@@ -119,7 +119,7 @@ func (g *game) playRecursive() player {
 					g.p1.asSlice()[0:p1Card],
 					g.p2.asSlice()[0:p2Card],
 				),
-				make([]gamestate, 0),
+				make([]*gamestate, 0),
 			}
 			winner = subgame.playRecursive()
 		} else {
@@ -200,7 +200,7 @@ func parse(in string) *game {
 		p2.endIdx = i + 1
 	}
 
-	return &game{gamestate{p1, p2}, make([]gamestate, 0)}
+	return &game{gamestate{p1, p2}, make([]*gamestate, 0)}
 }
 
 func unsafeAtoi(in string) int {
