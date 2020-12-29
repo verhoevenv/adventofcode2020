@@ -53,6 +53,23 @@ func TestPlay(t *testing.T) {
 	}
 }
 
+func TestPlayRecursive(t *testing.T) {
+	game := parse(startDecks)
+
+	game.playRecursive()
+
+	expectedP1Deck := []card{}
+	expectedP2Deck := []card{7, 5, 6, 2, 4, 1, 10, 8, 9, 3}
+	if !reflect.DeepEqual(game.p1.asSlice(), expectedP1Deck) {
+		t.Errorf("play for p1 was incorrect, got: %v, want: %v.",
+			game.p1.asSlice(), expectedP1Deck)
+	}
+	if !reflect.DeepEqual(game.p2.asSlice(), expectedP2Deck) {
+		t.Errorf("play for p2 was incorrect, got: %v, want: %v.",
+			game.p2.asSlice(), expectedP2Deck)
+	}
+}
+
 func TestScoreWinner(t *testing.T) {
 	game := parse(startDecks)
 	game.play()
