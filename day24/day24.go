@@ -7,10 +7,106 @@ import (
 	"strings"
 )
 
+type void struct{}
+
+type layout struct {
+	black map[locable]void
+}
+
+type locable interface {
+	calcNeighbours() []locable
+}
+
 type hexCoord struct {
 	x int
 	y int
 	z int
+}
+
+func (loc hexCoord) calcNeighbours() []locable {
+	result := make([]locable, 0)
+	for _, dir := range []hexCoord{
+		hexCoord{+1, -1, 0}, hexCoord{+1, 0, -1}, hexCoord{0, +1, -1},
+		hexCoord{-1, +1, 0}, hexCoord{-1, 0, +1}, hexCoord{0, -1, +1},
+	} {
+		candidate := hexCoord{loc.x + dir.x, loc.y + dir.y, loc.z + dir.z}
+		result = append(result, candidate)
+	}
+	return result
+}
+
+func (loc hexCoord) equals(other hexCoord) bool {
+	return loc.x == other.x && loc.y == other.y && loc.z == other.z
+}
+
+func makeLayout(hexes []hexCoord) *layout {
+	flips := make(map[locable]bool)
+
+	for _, hex := range hexes {
+		flips[hex] = !flips[hex]
+	}
+
+	result := make(map[locable]void)
+	for k, v := range flips {
+		if v {
+			result[k] = void{}
+
+		}
+	}
+	return &layout{result}
+}
+
+type neighbours func(loc locable) []locable
+
+var surroundingNeighbours neighbours = func() neighbours {
+	var neighboursCache = make(map[locable][]locable)
+
+	return func(loc locable) []locable {
+		if v, ok := neighboursCache[loc]; ok {
+			return v
+		}
+		result := loc.calcNeighbours()
+		neighboursCache[loc] = result
+		return result
+	}
+}()
+
+func (l *layout) countBlack(locs []locable) int {
+	counter := 0
+	for _, loc := range locs {
+		if _, ok := l.black[loc]; ok {
+			counter++
+		}
+	}
+	return counter
+}
+
+func (l *layout) countAllBlack() int {
+	return len(l.black)
+}
+
+func (l *layout) cycle() {
+	pois := make(map[locable]void)
+	for black := range l.black {
+		for _, loc := range surroundingNeighbours(black) {
+			pois[loc] = void{}
+		}
+	}
+
+	result := make(map[locable]void)
+	for loc := range pois {
+		_, isBlack := l.black[loc]
+		blackNeightbours := l.countBlack(surroundingNeighbours(loc))
+
+		switch {
+		case isBlack && (blackNeightbours == 1 || blackNeightbours == 2):
+			result[loc] = void{}
+		case !isBlack && blackNeightbours == 2:
+			result[loc] = void{}
+		}
+	}
+
+	l.black = result
 }
 
 func parseCoordinates(in string) []hexCoord {
@@ -55,28 +151,17 @@ func parseCoordinates(in string) []hexCoord {
 	return result
 }
 
-func flipAllAndCount(hexes []hexCoord) int {
-	flipped := make(map[hexCoord]bool)
-
-	for _, hex := range hexes {
-		flipped[hex] = !flipped[hex]
-	}
-
-	count := 0
-	for _, v := range flipped {
-		if v {
-			count++
-		}
-	}
-	return count
-}
-
 func main() {
 	input, _ := ioutil.ReadAll(os.Stdin)
 
 	tiles := parseCoordinates(string(input))
+	layout := makeLayout(tiles)
 
-	result := flipAllAndCount(tiles)
+	fmt.Println(layout.countAllBlack())
 
-	fmt.Println(result)
+	for i := 0; i < 100; i++ {
+		layout.cycle()
+	}
+
+	fmt.Println(layout.countAllBlack())
 }
